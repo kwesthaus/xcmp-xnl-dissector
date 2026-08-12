@@ -4,8 +4,12 @@ local opcodes_base = {
   [0x000d] = "SUPERBUNDLEAPPLY",
   [0x000e] = "RSTATUS",
   [0x000f] = "VERINFO",
+  [0x0010] = "MODELNUM",
+  [0x0011] = "SERNUM",
+  [0x0012] = "FWID",
   [0x002c] = "LANGPKINFO",
   [0x002e] = "SUPERBUNDLE",
+  [0x0100] = "READSTR",
   [0x0109] = "CLONEWR",
   [0x010a] = "CLONERD",
   [0x0400] = "DEVINITSTS",
@@ -82,6 +86,16 @@ local results = {
   [7] = "Unavailable Function",
 }
 
+local targets = {
+  [0x00] = "Firmware",
+  [0x30] = "Bootloader",
+  [0x35] = "Unk1",
+  [0x41] = "Codeplug",
+  [0x50] = "Unk2",
+  [0x51] = "Unk3",
+  [0x52] = "Unk4",
+}
+
 local devinitsts_inits = {
   [0] = "STATUS",
   [1] = "COMPLETE",
@@ -114,6 +128,14 @@ local f_address_mototrbo = ProtoField.bytes("xcmp.address.mototrbo", "MotoTRBO I
 local f_rstatus_result = ProtoField.uint8("xcmp.rstatus.result", "Result", base.DEC, results)
 local f_rstatus_condition = ProtoField.uint8("xcmp.rstatus.condition", "Condition", base.DEC)
 local f_rstatus_status = ProtoField.bytes("xcmp.rstatus.status", "Status")
+local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, targets)
+local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
+local f_readstr_id = ProtoField.uint24("xcmp.readstr.id", "Id", base.HEX)
+local f_readstr_req_len = ProtoField.uint32("xcmp.readstr.req_len", "Length", base.DEC)
+local f_readstr_offset = ProtoField.uint16("xcmp.readstr.offset", "Offset", base.DEC)
+local f_readstr_res_unk1 = ProtoField.uint8("xcmp.readstr.res_unk1", "Res_unk1", base.HEX)
+local f_readstr_ret_len = ProtoField.uint32("xcmp.readstr.ret_len", "Returned length", base.DEC)
+local f_readstr_tot_len = ProtoField.uint16("xcmp.readstr.tot_len", "Total length", base.DEC)
 local f_devinitsts_major = ProtoField.uint8("xcmp.devinitsts.major", "Major Version", base.DEC)
 local f_devinitsts_minor = ProtoField.uint8("xcmp.devinitsts.minor", "Minor Version", base.DEC)
 local f_devinitsts_patch = ProtoField.uint8("xcmp.devinitsts.patch", "Patch Version", base.DEC)
@@ -145,6 +167,14 @@ proto.fields = {
   f_rstatus_result,
   f_rstatus_condition,
   f_rstatus_status,
+  f_verinfo_target,
+  f_verinfo_version,
+  f_readstr_id,
+  f_readstr_req_len,
+  f_readstr_offset,
+  f_readstr_res_unk1,
+  f_readstr_ret_len,
+  f_readstr_tot_len,
   f_devinitsts_major,
   f_devinitsts_minor,
   f_devinitsts_patch,
@@ -198,7 +228,19 @@ function proto.dissector(buf, pkt, root)
   local opcode = buf(0, 2):uint()
   tree:add(f_opcode, buf(0, 2))
 
-  local desc = (opcodes[opcode] or opcode) .. " Transaction=" .. xnl_transaction().value
+  local start = ""
+  if opcodes[opcode] then
+    start = opcodes[opcode]
+  else
+    if (opcode & 0x8000) ~= 0 then
+      start = "UNK_RES:" .. string.format("0x%x", opcode)
+    elseif (opcode & 0xb000) ~= 0 then
+      start = "UNK_BRDCST:" .. string.format("0x%x", opcode)
+    else
+      start = "UNK_REQ:" .. string.format("0x%x", opcode)
+    end
+  end
+  local desc = start .. " Transaction=" .. xnl_transaction().value
 
   if opcode == 0x000e then
     tree:add(f_rstatus_condition, buf(2, 1))
@@ -211,6 +253,22 @@ function proto.dissector(buf, pkt, root)
       tree:add(f_rstatus_status, buf(4, buf:len() - 4))
       desc = desc .. " Condition=" .. buf(3, 1):uint()
     end
+  elseif opcode == 0x000f then
+    tree:add(f_verinfo_target, buf(2, 1))
+  elseif opcode == 0x800f then
+    tree:add(f_verinfo_version, buf(3, buf:len() - 3))
+  elseif opcode == 0x0100 then
+    tree:add(f_readstr_id, buf(2, 3))
+    tree:add(f_readstr_req_len, buf(5, 4))
+    tree:add(f_readstr_offset, buf(9, 2))
+    desc = desc .. " Id=" .. "0x" .. buf(2, 3):bytes():tohex()
+  elseif opcode == 0x8100 then
+    tree:add(f_readstr_res_unk1, buf(2, 1))
+    tree:add(f_readstr_id, buf(3, 3))
+    tree:add(f_readstr_ret_len, buf(6, 4))
+    tree:add(f_readstr_offset, buf(10, 2))
+    tree:add(f_readstr_tot_len, buf(12, 2))
+    desc = desc .. " Id=" .. "0x" .. buf(3, 3):bytes():tohex()
   elseif opcode == 0xb400 then
     tree:add(f_devinitsts_major, buf(2, 1))
     tree:add(f_devinitsts_minor, buf(3, 1))
