@@ -219,6 +219,20 @@ function proto.init()
   DissectorTable.get("xnl.proto"):add(1, proto)
 end
 
+local function describe_opcode(opcode)
+  if opcodes[opcode] then
+    return opcodes[opcode]
+  end
+
+  if (opcode & 0x8000) ~= 0 then
+    return "UNK_RES:" .. string.format("0x%x", opcode)
+  elseif (opcode & 0xb000) ~= 0 then
+    return "UNK_BRDCST:" .. string.format("0x%x", opcode)
+  end
+
+  return "UNK_REQ:" .. string.format("0x%x", opcode)
+end
+
 function proto.dissector(buf, pkt, root)
   if xnl_opcode().value == 12 and buf:len() == 0 then
     return
@@ -228,19 +242,7 @@ function proto.dissector(buf, pkt, root)
   local opcode = buf(0, 2):uint()
   tree:add(f_opcode, buf(0, 2))
 
-  local start = ""
-  if opcodes[opcode] then
-    start = opcodes[opcode]
-  else
-    if (opcode & 0x8000) ~= 0 then
-      start = "UNK_RES:" .. string.format("0x%x", opcode)
-    elseif (opcode & 0xb000) ~= 0 then
-      start = "UNK_BRDCST:" .. string.format("0x%x", opcode)
-    else
-      start = "UNK_REQ:" .. string.format("0x%x", opcode)
-    end
-  end
-  local desc = start .. " Transaction=" .. xnl_transaction().value
+  local desc = describe_opcode(opcode) .. " Transaction=" .. xnl_transaction().value
 
   if opcode == 0x000e then -- RSTATUS
     tree:add(f_rstatus_condition, buf(2, 1))
