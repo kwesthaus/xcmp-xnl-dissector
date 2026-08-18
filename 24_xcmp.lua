@@ -43,6 +43,7 @@ local opcodes_base = {
   [0x0428] = "DEVMGMT",
   [0x042e] = "ALARMCTRL",
   [0x042f] = "ROSCTRL",
+  [0x0445] = "FILEACCESS",
   [0x0447] = "RPTRCTRL",
   [0x0458] = "FD",
   [0x04a1] = "SWA_AUDIO",
@@ -171,6 +172,14 @@ local f_callctrl_function = ProtoField.uint8("xcmp.callctrl.function", "Function
 local f_callctrl_calltype = ProtoField.uint8("xcmp.callctrl.calltype", "Call Type", base.DEC, calltypes)
 local f_callctrl_address = ProtoField.bytes("xcmp.callctrl.address", "Address")
 local f_callctrl_group = ProtoField.bytes("xcmp.callctrl.group", "Group ID")
+local f_fileaccess_xfertype = ProtoField.uint16("xcmp.fileaccess.xfertype", "Transfer Type", base.DEC)
+local f_fileaccess_partitionid = ProtoField.uint8("xcmp.fileaccess.partitionid", "Partition ID", base.DEC)
+local f_fileaccess_optionflag = ProtoField.uint32("xcmp.fileaccess.optionflag", "Option Flag", base.HEX)
+local f_fileaccess_filesize = ProtoField.uint32("xcmp.fileaccess.filesize", "File Size", base.DEC)
+local f_fileaccess_fileoffset = ProtoField.uint32("xcmp.fileaccess.fileoffset", "File Offset", base.DEC)
+local f_fileaccess_pathlen = ProtoField.uint16("xcmp.fileaccess.pathlen", "Path Length", base.DEC)
+local f_fileaccess_path = ProtoField.stringz("xcmp.fileaccess.path", "Path", base.ASCII)
+
 
 proto.fields = {
   f_opcode,
@@ -220,6 +229,13 @@ proto.fields = {
   f_callctrl_calltype,
   f_callctrl_address,
   f_callctrl_group,
+  f_fileaccess_xfertype,
+  f_fileaccess_partitionid,
+  f_fileaccess_optionflag,
+  f_fileaccess_filesize,
+  f_fileaccess_fileoffset,
+  f_fileaccess_pathlen,
+  f_fileaccess_path,
 }
 
 -- dofile("xnl.luainc") -- uncomment to fix dependency order
@@ -406,6 +422,20 @@ local function dissect_xcmp_message(buf, pkt, tree)
     if buf:len() > 0 then
       tree:add(f_callctrl_group, buf)
     end
+  elseif opcode & 0x0fff == 0x0445 then -- FILEACCESS
+    local offset = 2
+    if opcode == 0x8445 then
+      tree:add(f_result, buf(offset, 1))
+      offset = offset + 1
+    end
+    tree:add(f_fileaccess_xfertype, buf(offset, 2))
+    tree:add(f_fileaccess_partitionid, buf(offset + 2, 1))
+    tree:add(f_fileaccess_optionflag, buf(offset + 3, 4))
+    tree:add(f_fileaccess_filesize, buf(offset + 7, 4))
+    tree:add(f_fileaccess_fileoffset, buf(offset + 11, 4))
+    tree:add(f_fileaccess_pathlen, buf(offset + 15, 2))
+    local pathlen = buf(offset + 15, 2):uint()
+    tree:add(f_fileaccess_path, buf(offset + 17, pathlen))
   end
 
   return desc
