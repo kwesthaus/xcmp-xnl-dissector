@@ -126,6 +126,7 @@ local devinitsts_attrs = {
 
 local f_opcode = ProtoField.uint16("xcmp.opcode", "Opcode", base.HEX, opcodes)
 local f_len = ProtoField.uint16("xcmp.len", "Length", base.DEC)
+local f_result = ProtoField.uint8("xcmp.result", "Result", base.DEC, results)
 local f_address_type = ProtoField.uint8("xcmp.address.type", "Type", base.DEC, address_types)
 local f_address_mototrbo = ProtoField.bytes("xcmp.address.mototrbo", "MotoTRBO ID")
 local f_rstatus_result = ProtoField.uint8("xcmp.rstatus.result", "Result", base.DEC, results)
@@ -135,10 +136,12 @@ local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
 local f_bundle_count = ProtoField.uint8("xcmp.bundle.count", "Message Count", base.DEC)
 local f_readstr_id = ProtoField.uint24("xcmp.readstr.id", "Id", base.HEX)
-local f_readstr_req_len = ProtoField.uint32("xcmp.readstr.req_len", "Length", base.DEC)
+local f_readstr_unk = ProtoField.uint16("xcmp.readstr.unk", "Unk", base.HEX)
+local f_readstr_req_len = ProtoField.uint16("xcmp.readstr.req_len", "Length", base.DEC)
 local f_readstr_offset = ProtoField.uint16("xcmp.readstr.offset", "Offset", base.DEC)
 local f_readstr_res_unk1 = ProtoField.uint8("xcmp.readstr.res_unk1", "Res_unk1", base.HEX)
-local f_readstr_ret_len = ProtoField.uint32("xcmp.readstr.ret_len", "Returned length", base.DEC)
+local f_readstr_ret_unk = ProtoField.uint16("xcmp.readstr.ret_unk", "Returned unk", base.HEX)
+local f_readstr_ret_len = ProtoField.uint16("xcmp.readstr.ret_len", "Returned length", base.DEC)
 local f_readstr_tot_len = ProtoField.uint16("xcmp.readstr.tot_len", "Total length", base.DEC)
 local f_unkstr_id = ProtoField.uint24("xcmp.unkstr.id", "Id", base.HEX)
 local f_enumstr_dir = ProtoField.uint8("xcmp.enumstr.dir", "Directory", base.HEX)
@@ -172,6 +175,7 @@ local f_callctrl_group = ProtoField.bytes("xcmp.callctrl.group", "Group ID")
 proto.fields = {
   f_opcode,
   f_len,
+  f_result,
   f_address_type,
   f_address_mototrbo,
   f_rstatus_result,
@@ -181,9 +185,11 @@ proto.fields = {
   f_verinfo_version,
   f_bundle_count,
   f_readstr_id,
+  f_readstr_unk,
   f_readstr_req_len,
   f_readstr_offset,
   f_readstr_res_unk1,
+  f_readstr_ret_unk,
   f_readstr_ret_len,
   f_readstr_tot_len,
   f_unkstr_id,
@@ -296,15 +302,44 @@ local function dissect_xcmp_message(buf, pkt, tree)
       child_tree:set_text(child_desc)
       offset = child_offset + child_len
     end
+  elseif opcode == 0x802e then -- SUPERBUNDLE_RES
+    local bundle_count = buf(3, 1):uint()
+    tree:add(f_bundle_count, buf(3, 1))
+    local offset = 4
+
+    for index = 1, bundle_count do
+      if offset + 2 > buf:len() then
+        break
+      end
+
+      local child_len = buf(offset, 2):uint()
+      local child_offset = offset + 2
+
+      if child_len < 2 or child_offset + child_len > buf:len() then
+        break
+      end
+
+      local bundle_tree = tree:add(proto, buf(offset, child_len + 2))
+      bundle_tree:add(f_len, buf(offset, 2))
+      local child_buf = buf(child_offset, child_len)
+      local child_tree = bundle_tree:add(proto, child_buf)
+      local child_desc = dissect_xcmp_message(child_buf, pkt, child_tree)
+
+      bundle_tree:set_text(string.format("Bundle Message %d", index))
+      child_tree:set_text(child_desc)
+      offset = child_offset + child_len
+    end
   elseif opcode == 0x0100 then -- READSTR
     tree:add(f_readstr_id, buf(2, 3))
-    tree:add(f_readstr_req_len, buf(5, 4))
+    tree:add(f_readstr_unk, buf(5, 2))
+    tree:add(f_readstr_req_len, buf(7, 2))
     tree:add(f_readstr_offset, buf(9, 2))
     desc = desc .. " Id=" .. "0x" .. buf(2, 3):bytes():tohex()
   elseif opcode == 0x8100 then -- READSTR_RES
     tree:add(f_readstr_res_unk1, buf(2, 1))
     tree:add(f_readstr_id, buf(3, 3))
-    tree:add(f_readstr_ret_len, buf(6, 4))
+    tree:add(f_readstr_ret_unk, buf(6, 2))
+    tree:add(f_readstr_ret_len, buf(8, 2))
     tree:add(f_readstr_offset, buf(10, 2))
     tree:add(f_readstr_tot_len, buf(12, 2))
     desc = desc .. " Id=" .. "0x" .. buf(3, 3):bytes():tohex()
