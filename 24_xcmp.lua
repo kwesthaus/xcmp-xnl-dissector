@@ -187,14 +187,13 @@ local f_rstatus_status = ProtoField.bytes("xcmp.rstatus.status", "Status")
 local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, targets)
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
 local f_bundle_count = ProtoField.uint8("xcmp.bundle.count", "Message Count", base.DEC)
-local f_readstr_id = ProtoField.uint24("xcmp.readstr.id", "Id", base.HEX)
-local f_readstr_unk = ProtoField.uint16("xcmp.readstr.unk", "Unk", base.HEX)
-local f_readstr_req_len = ProtoField.uint16("xcmp.readstr.req_len", "Length", base.DEC)
-local f_readstr_offset = ProtoField.uint16("xcmp.readstr.offset", "Offset", base.DEC)
-local f_readstr_res_unk1 = ProtoField.uint8("xcmp.readstr.res_unk1", "Res_unk1", base.HEX)
-local f_readstr_ret_unk = ProtoField.uint16("xcmp.readstr.ret_unk", "Returned unk", base.HEX)
-local f_readstr_ret_len = ProtoField.uint16("xcmp.readstr.ret_len", "Returned length", base.DEC)
-local f_readstr_tot_len = ProtoField.uint16("xcmp.readstr.tot_len", "Total length", base.DEC)
+local f_readishitem_part = ProtoField.uint8("xcmp.readishitem.partition", "Partition", base.HEX)
+local f_readishitem_type = ProtoField.uint16("xcmp.readishitem.type", "Type", base.HEX)
+local f_readishitem_id = ProtoField.uint16("xcmp.readishitem.id", "ID", base.HEX)
+local f_readishitem_req_len = ProtoField.uint16("xcmp.readishitem.req_len", "Length", base.DEC)
+local f_readishitem_offset = ProtoField.uint16("xcmp.readishitem.offset", "Offset", base.DEC)
+local f_readishitem_ret_len = ProtoField.uint16("xcmp.readishitem.ret_len", "Returned length", base.DEC)
+local f_readishitem_tot_len = ProtoField.uint16("xcmp.readishitem.tot_len", "Total length", base.DEC)
 local f_unkstr_id = ProtoField.uint24("xcmp.unkstr.id", "Id", base.HEX)
 local f_enumstr_dir = ProtoField.uint8("xcmp.enumstr.dir", "Directory", base.HEX)
 local f_enumstr_entry = ProtoField.uint16("xcmp.enumstr.entry", "Entry", base.HEX)
@@ -244,14 +243,13 @@ proto.fields = {
   f_verinfo_target,
   f_verinfo_version,
   f_bundle_count,
-  f_readstr_id,
-  f_readstr_unk,
-  f_readstr_req_len,
-  f_readstr_offset,
-  f_readstr_res_unk1,
-  f_readstr_ret_unk,
-  f_readstr_ret_len,
-  f_readstr_tot_len,
+  f_readishitem_part,
+  f_readishitem_type,
+  f_readishitem_id,
+  f_readishitem_req_len,
+  f_readishitem_offset,
+  f_readishitem_ret_len,
+  f_readishitem_tot_len,
   f_unkstr_id,
   f_enumstr_dir,
   f_enumstr_entry,
@@ -396,20 +394,22 @@ local function dissect_xcmp_message(buf, pkt, tree)
       child_tree:set_text(child_desc)
       offset = child_offset + child_len
     end
-  elseif opcode == 0x0100 then -- READSTR
-    tree:add(f_readstr_id, buf(2, 3))
-    tree:add(f_readstr_unk, buf(5, 2))
-    tree:add(f_readstr_req_len, buf(7, 2))
-    tree:add(f_readstr_offset, buf(9, 2))
-    desc = desc .. " Id=" .. "0x" .. buf(2, 3):bytes():tohex()
-  elseif opcode == 0x8100 then -- READSTR_RES
-    tree:add(f_readstr_res_unk1, buf(2, 1))
-    tree:add(f_readstr_id, buf(3, 3))
-    tree:add(f_readstr_ret_unk, buf(6, 2))
-    tree:add(f_readstr_ret_len, buf(8, 2))
-    tree:add(f_readstr_offset, buf(10, 2))
-    tree:add(f_readstr_tot_len, buf(12, 2))
-    desc = desc .. " Id=" .. "0x" .. buf(3, 3):bytes():tohex()
+  elseif opcode == 0x0100 then -- READISHITEM
+    tree:add(f_readishitem_part, buf(2, 1))
+    tree:add(f_readishitem_type, buf(3, 2))
+    tree:add(f_readishitem_id, buf(5, 2))
+    tree:add(f_readishitem_req_len, buf(7, 2))
+    tree:add(f_readishitem_offset, buf(9, 2))
+    desc = desc .. " Part/Type/Id=" .. "0x" .. buf(2, 5):bytes():tohex()
+  elseif opcode == 0x8100 then -- READISHITEM_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_readishitem_part, buf(3, 1))
+    tree:add(f_readishitem_type, buf(4, 2))
+    tree:add(f_readishitem_id, buf(6, 2))
+    tree:add(f_readishitem_ret_len, buf(8, 2))
+    tree:add(f_readishitem_offset, buf(10, 2))
+    tree:add(f_readishitem_tot_len, buf(12, 2))
+    desc = desc .. " Part/Type/Id=" .. "0x" .. buf(3, 5):bytes():tohex()
   elseif opcode == 0x0104 then -- UNKSTR
     tree:add(f_unkstr_id, buf(2, 3))
     desc = desc .. " Id=" .. "0x" .. buf(2, 3):bytes():tohex()
