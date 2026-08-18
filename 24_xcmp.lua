@@ -10,6 +10,8 @@ local opcodes_base = {
   [0x002c] = "LANGPKINFO",
   [0x002e] = "SUPERBUNDLE",
   [0x0100] = "READSTR",
+  [0x0104] = "UNKSTR",
+  [0x0105] = "ENUMSTR",
   [0x0109] = "CLONEWR",
   [0x010a] = "CLONERD",
   [0x0400] = "DEVINITSTS",
@@ -138,6 +140,11 @@ local f_readstr_offset = ProtoField.uint16("xcmp.readstr.offset", "Offset", base
 local f_readstr_res_unk1 = ProtoField.uint8("xcmp.readstr.res_unk1", "Res_unk1", base.HEX)
 local f_readstr_ret_len = ProtoField.uint32("xcmp.readstr.ret_len", "Returned length", base.DEC)
 local f_readstr_tot_len = ProtoField.uint16("xcmp.readstr.tot_len", "Total length", base.DEC)
+local f_unkstr_id = ProtoField.uint24("xcmp.unkstr.id", "Id", base.HEX)
+local f_enumstr_dir = ProtoField.uint8("xcmp.enumstr.dir", "Directory", base.HEX)
+local f_enumstr_entry = ProtoField.uint16("xcmp.enumstr.entry", "Entry", base.HEX)
+local f_enumstr_ret_cnt = ProtoField.uint16("xcmp.enumstr.ret_cnt", "Returned count", base.DEC)
+local f_enumstr_tot_cnt = ProtoField.uint32("xcmp.enumstr.tot_cnt", "Total count", base.DEC)
 local f_devinitsts_major = ProtoField.uint8("xcmp.devinitsts.major", "Major Version", base.DEC)
 local f_devinitsts_minor = ProtoField.uint8("xcmp.devinitsts.minor", "Minor Version", base.DEC)
 local f_devinitsts_patch = ProtoField.uint8("xcmp.devinitsts.patch", "Patch Version", base.DEC)
@@ -179,6 +186,11 @@ proto.fields = {
   f_readstr_res_unk1,
   f_readstr_ret_len,
   f_readstr_tot_len,
+  f_unkstr_id,
+  f_enumstr_dir,
+  f_enumstr_entry,
+  f_enumstr_ret_cnt,
+  f_enumstr_tot_cnt,
   f_devinitsts_major,
   f_devinitsts_minor,
   f_devinitsts_patch,
@@ -296,6 +308,28 @@ local function dissect_xcmp_message(buf, pkt, tree)
     tree:add(f_readstr_offset, buf(10, 2))
     tree:add(f_readstr_tot_len, buf(12, 2))
     desc = desc .. " Id=" .. "0x" .. buf(3, 3):bytes():tohex()
+  elseif opcode == 0x0104 then -- UNKSTR
+    tree:add(f_unkstr_id, buf(2, 3))
+    desc = desc .. " Id=" .. "0x" .. buf(2, 3):bytes():tohex()
+  elseif opcode == 0x8104 then -- UNKSTR_RES
+    tree:add(f_unkstr_id, buf(3, 3))
+    desc = desc .. " Id=" .. "0x" .. buf(3, 3):bytes():tohex()
+  elseif opcode == 0x0105 then -- ENUMSTR
+    tree:add(f_enumstr_dir, buf(2, 1))
+    desc = desc .. " Dir=" .. "0x" .. buf(2, 1):bytes():tohex()
+  elseif opcode == 0x8105 then -- ENUMSTR_RES
+    tree:add(f_enumstr_dir, buf(3, 1))
+    desc = desc .. " Dir=" .. "0x" .. buf(3, 1):bytes():tohex()
+    local ret_cnt = buf(4, 2):uint()
+    tree:add(f_enumstr_ret_cnt, buf(4, 2))
+    tree:add(f_enumstr_tot_cnt, buf(6, 4))
+    for index = 1, ret_cnt do
+      local offset = 10 + (index - 1) * 2
+      if offset + 2 > buf:len() then
+        break
+      end
+      local str_tree = tree:add(f_enumstr_entry, buf(offset, 2))
+    end
   elseif opcode == 0xb400 then -- DEVINITSTS_BRDCST
     tree:add(f_devinitsts_major, buf(2, 1))
     tree:add(f_devinitsts_minor, buf(3, 1))
