@@ -242,10 +242,10 @@ function proto.dissector(buf, pkt, root)
   end
   local desc = start .. " Transaction=" .. xnl_transaction().value
 
-  if opcode == 0x000e then
+  if opcode == 0x000e then -- RSTATUS
     tree:add(f_rstatus_condition, buf(2, 1))
     desc = desc .. " Condition=" .. buf(2, 1):uint()
-  elseif opcode == 0x800e then
+  elseif opcode == 0x800e then -- RSTATUS_RES
     local rstatus_result = buf(2, 1):uint()
     tree:add(f_rstatus_result, buf(2, 1))
     if rstatus_result == 0 then
@@ -253,23 +253,23 @@ function proto.dissector(buf, pkt, root)
       tree:add(f_rstatus_status, buf(4, buf:len() - 4))
       desc = desc .. " Condition=" .. buf(3, 1):uint()
     end
-  elseif opcode == 0x000f then
+  elseif opcode == 0x000f then -- VERINFO
     tree:add(f_verinfo_target, buf(2, 1))
-  elseif opcode == 0x800f then
+  elseif opcode == 0x800f then -- VERINFO_RES
     tree:add(f_verinfo_version, buf(3, buf:len() - 3))
-  elseif opcode == 0x0100 then
+  elseif opcode == 0x0100 then -- READSTR
     tree:add(f_readstr_id, buf(2, 3))
     tree:add(f_readstr_req_len, buf(5, 4))
     tree:add(f_readstr_offset, buf(9, 2))
     desc = desc .. " Id=" .. "0x" .. buf(2, 3):bytes():tohex()
-  elseif opcode == 0x8100 then
+  elseif opcode == 0x8100 then -- READSTR_RES
     tree:add(f_readstr_res_unk1, buf(2, 1))
     tree:add(f_readstr_id, buf(3, 3))
     tree:add(f_readstr_ret_len, buf(6, 4))
     tree:add(f_readstr_offset, buf(10, 2))
     tree:add(f_readstr_tot_len, buf(12, 2))
     desc = desc .. " Id=" .. "0x" .. buf(3, 3):bytes():tohex()
-  elseif opcode == 0xb400 then
+  elseif opcode == 0xb400 then -- DEVINITSTS_BRDCST
     tree:add(f_devinitsts_major, buf(2, 1))
     tree:add(f_devinitsts_minor, buf(3, 1))
     tree:add(f_devinitsts_patch, buf(4, 1))
@@ -293,17 +293,17 @@ function proto.dissector(buf, pkt, root)
         end
       end
     end
-  elseif opcode == 0x041c or opcode == 0xb41c then
+  elseif opcode == 0x041c or opcode == 0xb41c then -- RRCTRL
     tree:add(f_rrctrl_feature, buf(2, 1))
     tree:add(opcode == 0x041c and f_rrctrl_operation or f_rrctrl_status, buf(3, 1))
     buf = dissect_address(tree, f_rrctrl_address, buf(4))
-  elseif opcode == 0x040d then
+  elseif opcode == 0x040d then -- CHZNSEL
     tree:add(f_chznsel_function, buf(2, 1))
     tree:add(f_chznsel_zone, buf(3, 2))
     tree:add(f_chznsel_position, buf(5, 2))
-  elseif opcode == 0x040f then
+  elseif opcode == 0x040f then -- SCAN
     tree:add(f_scan_function, buf(2, 1))
-  elseif opcode == 0x041e then
+  elseif opcode == 0x041e then -- CALLCTRL
     tree:add(f_callctrl_function, buf(2, 1))
     tree:add(f_callctrl_calltype, buf(3, 1))
     buf = dissect_address(tree, f_callctrl_address, buf(4))
