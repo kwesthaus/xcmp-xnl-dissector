@@ -123,6 +123,7 @@ local devinitsts_attrs = {
 }
 
 local f_opcode = ProtoField.uint16("xcmp.opcode", "Opcode", base.HEX, opcodes)
+local f_len = ProtoField.uint16("xcmp.len", "Length", base.DEC)
 local f_address_type = ProtoField.uint8("xcmp.address.type", "Type", base.DEC, address_types)
 local f_address_mototrbo = ProtoField.bytes("xcmp.address.mototrbo", "MotoTRBO ID")
 local f_rstatus_result = ProtoField.uint8("xcmp.rstatus.result", "Result", base.DEC, results)
@@ -130,6 +131,7 @@ local f_rstatus_condition = ProtoField.uint8("xcmp.rstatus.condition", "Conditio
 local f_rstatus_status = ProtoField.bytes("xcmp.rstatus.status", "Status")
 local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, targets)
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
+local f_bundle_count = ProtoField.uint8("xcmp.bundle.count", "Message Count", base.DEC)
 local f_readstr_id = ProtoField.uint24("xcmp.readstr.id", "Id", base.HEX)
 local f_readstr_req_len = ProtoField.uint32("xcmp.readstr.req_len", "Length", base.DEC)
 local f_readstr_offset = ProtoField.uint16("xcmp.readstr.offset", "Offset", base.DEC)
@@ -162,6 +164,7 @@ local f_callctrl_group = ProtoField.bytes("xcmp.callctrl.group", "Group ID")
 
 proto.fields = {
   f_opcode,
+  f_len,
   f_address_type,
   f_address_mototrbo,
   f_rstatus_result,
@@ -169,6 +172,7 @@ proto.fields = {
   f_rstatus_status,
   f_verinfo_target,
   f_verinfo_version,
+  f_bundle_count,
   f_readstr_id,
   f_readstr_req_len,
   f_readstr_offset,
@@ -233,15 +237,9 @@ local function describe_opcode(opcode)
   return "UNK_REQ:" .. string.format("0x%x", opcode)
 end
 
-function proto.dissector(buf, pkt, root)
-  if xnl_opcode().value == 12 and buf:len() == 0 then
-    return
-  end
-
-  local tree = root:add(proto, buf(0, buf:len()))
+local function dissect_xcmp_message(buf, pkt, tree)
   local opcode = buf(0, 2):uint()
   tree:add(f_opcode, buf(0, 2))
-
   local desc = describe_opcode(opcode) .. " Transaction=" .. xnl_transaction().value
 
   if opcode == 0x000e then -- RSTATUS
@@ -259,6 +257,33 @@ function proto.dissector(buf, pkt, root)
     tree:add(f_verinfo_target, buf(2, 1))
   elseif opcode == 0x800f then -- VERINFO_RES
     tree:add(f_verinfo_version, buf(3, buf:len() - 3))
+  elseif opcode == 0x002e then -- SUPERBUNDLE
+    local bundle_count = buf(2, 1):uint()
+    tree:add(f_bundle_count, buf(2, 1))
+    local offset = 4
+
+    for index = 1, bundle_count do
+      if offset + 2 > buf:len() then
+        break
+      end
+
+      local child_len = buf(offset, 2):uint()
+      local child_offset = offset + 2
+
+      if child_len < 2 or child_offset + child_len > buf:len() then
+        break
+      end
+
+      local bundle_tree = tree:add(proto, buf(offset, child_len + 2))
+      bundle_tree:add(f_len, buf(offset, 2))
+      local child_buf = buf(child_offset, child_len)
+      local child_tree = bundle_tree:add(proto, child_buf)
+      local child_desc = dissect_xcmp_message(child_buf, pkt, child_tree)
+
+      bundle_tree:set_text(string.format("Bundle Message %d", index))
+      child_tree:set_text(child_desc)
+      offset = child_offset + child_len
+    end
   elseif opcode == 0x0100 then -- READSTR
     tree:add(f_readstr_id, buf(2, 3))
     tree:add(f_readstr_req_len, buf(5, 4))
@@ -313,6 +338,17 @@ function proto.dissector(buf, pkt, root)
       tree:add(f_callctrl_group, buf)
     end
   end
+
+  return desc
+end
+
+function proto.dissector(buf, pkt, root)
+  if xnl_opcode().value == 12 and buf:len() == 0 then
+    return
+  end
+
+  local tree = root:add(proto, buf(0, buf:len()))
+  local desc = dissect_xcmp_message(buf, pkt, tree)
 
   pkt.cols.protocol:set("XCMP")
   pkt.cols.info:set(desc)
