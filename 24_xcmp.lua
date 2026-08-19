@@ -181,13 +181,17 @@ local partitions = {
   [0x81] = "SECURITY?",
 }
 
+local rstatus_conditions = {
+  [75] = "CS Physical Serial Number",
+}
+
 local f_opcode = ProtoField.uint16("xcmp.opcode", "Opcode", base.HEX, opcodes)
 local f_len = ProtoField.uint16("xcmp.len", "Length", base.DEC)
 local f_result = ProtoField.uint8("xcmp.result", "Result", base.DEC, results)
 local f_address_type = ProtoField.uint8("xcmp.address.type", "Type", base.DEC, address_types)
 local f_address_mototrbo = ProtoField.bytes("xcmp.address.mototrbo", "MotoTRBO ID")
 local f_rstatus_result = ProtoField.uint8("xcmp.rstatus.result", "Result", base.DEC, results)
-local f_rstatus_condition = ProtoField.uint8("xcmp.rstatus.condition", "Condition", base.DEC)
+local f_rstatus_condition = ProtoField.uint8("xcmp.rstatus.condition", "Condition", base.DEC, rstatus_conditions)
 local f_rstatus_status = ProtoField.bytes("xcmp.rstatus.status", "Status")
 local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, targets)
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
