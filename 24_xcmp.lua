@@ -197,27 +197,17 @@ local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
 local f_bundle_count = ProtoField.uint8("xcmp.bundle.count", "Message Count", base.DEC)
 --
-local f_readishitem_part = ProtoField.uint8("xcmp.readishitem.partition", "Partition", base.HEX, partitions)
-local f_readishitem_type = ProtoField.uint16("xcmp.readishitem.type", "Type", base.HEX)
-local f_readishitem_id = ProtoField.uint16("xcmp.readishitem.id", "ID", base.HEX)
-local f_readishitem_req_len = ProtoField.uint16("xcmp.readishitem.req_len", "Length", base.DEC)
-local f_readishitem_offset = ProtoField.uint16("xcmp.readishitem.offset", "Offset", base.DEC)
-local f_readishitem_ret_len = ProtoField.uint16("xcmp.readishitem.ret_len", "Returned length", base.DEC)
-local f_readishitem_tot_len = ProtoField.uint16("xcmp.readishitem.tot_len", "Total length", base.DEC)
-local f_readishitem_value = ProtoField.bytes("xcmp.readishitem.value", "Value")
+local f_ish_part = ProtoField.uint8("xcmp.ish.partition", "Partition", base.HEX, partitions)
+local f_ish_type = ProtoField.uint16("xcmp.ish.type", "Type", base.HEX)
+local f_ish_id = ProtoField.uint16("xcmp.ish.id", "ID", base.HEX)
+local f_ish_req_len = ProtoField.uint16("xcmp.ish.req_len", "Length", base.DEC)
+local f_ish_offset = ProtoField.uint16("xcmp.ish.offset", "Offset", base.DEC)
+local f_ish_ret_len = ProtoField.uint16("xcmp.ish.ret_len", "Returned length", base.DEC)
+local f_ish_tot_len = ProtoField.uint16("xcmp.ish.tot_len", "Total length", base.DEC)
+local f_ish_value = ProtoField.bytes("xcmp.ish.value", "Value")
 -- 104 is IDSET
-local f_readishidset_part = ProtoField.uint8("xcmp.readishidset.partition", "Partition", base.HEX, partitions)
-local f_readishidset_type = ProtoField.uint16("xcmp.readishidset.type", "Type", base.HEX)
-local f_readishidset_num = ProtoField.uint16("xcmp.readishidset.num", "Num", base.DEC)
-local f_readishidset_offset = ProtoField.uint16("xcmp.readishidset.offset", "Offset", base.DEC)
-local f_readishidset_ret_len = ProtoField.uint16("xcmp.readishidset.ret_len", "Returned length", base.DEC)
-local f_readishidset_tot_len = ProtoField.uint16("xcmp.readishidset.tot_len", "Total length", base.DEC)
 local f_readishidset_entry = ProtoField.uint16("xcmp.readishidset.entry", "Entry", base.HEX)
 -- 105 is TYPESET
-local f_readishtypeset_part = ProtoField.uint8("xcmp.readishtypeset.part", "Partition", base.HEX, partitions)
-local f_readishtypeset_num = ProtoField.uint16("xcmp.readishtypeset.num", "Num", base.DEC)
-local f_readishtypeset_offset = ProtoField.uint16("xcmp.readishtypeset.offset", "Offset", base.DEC)
-local f_readishtypeset_tot_cnt = ProtoField.uint32("xcmp.readishtypeset.tot_cnt", "Total count", base.DEC)
 local f_readishtypeset_entry = ProtoField.uint16("xcmp.readishtypeset.entry", "Entry", base.HEX)
 --
 local f_devinitsts_major = ProtoField.uint8("xcmp.devinitsts.major", "Major Version", base.DEC)
@@ -265,27 +255,17 @@ proto.fields = {
   f_verinfo_version,
   f_bundle_count,
   --
-  f_readishitem_part,
-  f_readishitem_type,
-  f_readishitem_id,
-  f_readishitem_req_len,
-  f_readishitem_offset,
-  f_readishitem_ret_len,
-  f_readishitem_tot_len,
-  f_readishitem_value,
+  f_ish_part,
+  f_ish_type,
+  f_ish_id,
+  f_ish_req_len,
+  f_ish_offset,
+  f_ish_ret_len,
+  f_ish_tot_len,
+  f_ish_value,
   --
-  f_readishidset_part,
-  f_readishidset_type,
-  f_readishidset_num,
-  f_readishidset_offset,
-  f_readishidset_ret_len,
-  f_readishidset_tot_len,
   f_readishidset_entry,
   --
-  f_readishtypeset_part,
-  f_readishtypeset_num,
-  f_readishtypeset_offset,
-  f_readishtypeset_tot_cnt,
   f_readishtypeset_entry,
   --
   f_devinitsts_major,
@@ -428,39 +408,39 @@ local function dissect_xcmp_message(buf, pkt, tree)
       offset = child_offset + child_len
     end
   elseif opcode == 0x0100 then -- READISHITEM
-    tree:add(f_readishitem_part, buf(2, 1))
-    tree:add(f_readishitem_type, buf(3, 2))
-    tree:add(f_readishitem_id, buf(5, 2))
-    tree:add(f_readishitem_req_len, buf(7, 2))
-    tree:add(f_readishitem_offset, buf(9, 2))
+    tree:add(f_ish_part, buf(2, 1))
+    tree:add(f_ish_type, buf(3, 2))
+    tree:add(f_ish_id, buf(5, 2))
+    tree:add(f_ish_req_len, buf(7, 2))
+    tree:add(f_ish_offset, buf(9, 2))
     desc = desc .. " Part/Type/Id=" .. "0x" .. buf(2, 5):bytes():tohex()
   elseif opcode == 0x8100 then -- READISHITEM_RES
     tree:add(f_result, buf(2, 1))
-    tree:add(f_readishitem_part, buf(3, 1))
-    tree:add(f_readishitem_type, buf(4, 2))
-    tree:add(f_readishitem_id, buf(6, 2))
-    tree:add(f_readishitem_ret_len, buf(8, 2))
+    tree:add(f_ish_part, buf(3, 1))
+    tree:add(f_ish_type, buf(4, 2))
+    tree:add(f_ish_id, buf(6, 2))
+    tree:add(f_ish_ret_len, buf(8, 2))
     local ret_len = buf(8, 2):uint()
-    tree:add(f_readishitem_offset, buf(10, 2))
-    tree:add(f_readishitem_tot_len, buf(12, 2))
+    tree:add(f_ish_offset, buf(10, 2))
+    tree:add(f_ish_tot_len, buf(12, 2))
     if ret_len > 0 then
-      tree:add(f_readishitem_value, buf(14, ret_len))
+      tree:add(f_ish_value, buf(14, ret_len))
     end
     desc = desc .. " Part/Type/Id=" .. "0x" .. buf(3, 5):bytes():tohex()
   elseif opcode == 0x0104 then -- READISHIDSET
-    tree:add(f_readishidset_part, buf(2, 1))
-    tree:add(f_readishidset_type, buf(3, 2))
-    tree:add(f_readishidset_num, buf(5, 2))
-    tree:add(f_readishidset_offset, buf(7, 2))
+    tree:add(f_ish_part, buf(2, 1))
+    tree:add(f_ish_type, buf(3, 2))
+    tree:add(f_ish_req_len, buf(5, 2))
+    tree:add(f_ish_offset, buf(7, 2))
     desc = desc .. " Part/Type=" .. "0x" .. buf(2, 3):bytes():tohex()
   elseif opcode == 0x8104 then -- READISHIDSET_RES
     tree:add(f_result, buf(2, 1))
-    tree:add(f_readishidset_part, buf(3, 1))
-    tree:add(f_readishidset_type, buf(4, 2))
-    tree:add(f_readishidset_ret_len, buf(6, 2))
+    tree:add(f_ish_part, buf(3, 1))
+    tree:add(f_ish_type, buf(4, 2))
+    tree:add(f_ish_ret_len, buf(6, 2))
     local ret_cnt = buf(6, 2):uint()
-    tree:add(f_readishidset_offset, buf(8, 2))
-    tree:add(f_readishidset_tot_len, buf(10, 2))
+    tree:add(f_ish_offset, buf(8, 2))
+    tree:add(f_ish_tot_len, buf(10, 2))
     desc = desc .. " Part/Type=" .. "0x" .. buf(3, 3):bytes():tohex()
     for index = 1, ret_cnt do
       local offset = 12 + (index - 1) * 2
@@ -470,18 +450,18 @@ local function dissect_xcmp_message(buf, pkt, tree)
       tree:add(f_readishidset_entry, buf(offset, 2))
     end
   elseif opcode == 0x0105 then -- READISHTYPESET
-    tree:add(f_readishtypeset_part, buf(2, 1))
-    tree:add(f_readishtypeset_num, buf(3, 2))
-    tree:add(f_readishtypeset_offset, buf(5, 2))
+    tree:add(f_ish_part, buf(2, 1))
+    tree:add(f_ish_req_len, buf(3, 2))
+    tree:add(f_ish_offset, buf(5, 2))
     desc = desc .. " Part=" .. "0x" .. buf(2, 1):bytes():tohex()
   elseif opcode == 0x8105 then -- READISHTYPESET_RES
     tree:add(f_result, buf(2, 1))
-    tree:add(f_readishtypeset_part, buf(3, 1))
+    tree:add(f_ish_part, buf(3, 1))
     desc = desc .. " Part=" .. "0x" .. buf(3, 1):bytes():tohex()
     local ret_cnt = buf(4, 2):uint()
-    tree:add(f_readishtypeset_num, buf(4, 2))
-    tree:add(f_readishtypeset_offset, buf(6, 2))
-    tree:add(f_readishtypeset_tot_cnt, buf(8, 2))
+    tree:add(f_ish_ret_len, buf(4, 2))
+    tree:add(f_ish_offset, buf(6, 2))
+    tree:add(f_ish_tot_len, buf(8, 2))
     for index = 1, ret_cnt do
       local offset = 10 + (index - 1) * 2
       if offset + 2 > buf:len() then
