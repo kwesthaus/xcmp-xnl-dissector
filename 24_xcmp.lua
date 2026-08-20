@@ -15,7 +15,7 @@ local opcodes_base = {
   [0x000e] = "RSTATUS",
   [0x000f] = "VERINFO",
   [0x0010] = "RWMODELNUM",
-  [0x0011] = "RWSERNUM",
+  [0x0011] = "SERNUMOP",
   [0x0012] = "READUUID",
   [0x0016] = "RXBERCTRL",
   [0x0017] = "RXBERSYNCRPRT",
@@ -116,12 +116,31 @@ end
 
 local results = {
   [0] = "Success",
+  [1] = "Failure",
   [2] = "Incorrect Mode",
   [3] = "Unsupported Opcode",
   [4] = "Invalid Parameter",
   [5] = "Reply Too Big",
   [6] = "Security Locked",
-  [7] = "Unavailable Function",
+  [7] = "Bundled Opcode Not Supported",
+  [16] = "LockSeqFail/EraseInProg/Busy/PairDevFail",
+  [17] = "BitLock/LangPackNoExist/PwVerifFail",
+  [18] = "BitUnlock/RadioLocked/TTSNoExist",
+  [19] = "Voltage Not Stable",
+  [20] = "Program Failure",
+  [22] = "Transfer Complete",
+  [23] = "Request Not RXed",
+  [64] = "Softpot Operation Not Supported",
+  [65] = "Softpot Type Not Supported",
+  [66] = "Softpot Value Out of Range",
+  [128] = "Flash Write Failure",
+  [129] = "ISH Item Not Found",
+  [130] = "ISH Offset Out of Range",
+  [131] = "ISH Insufficient Partition Space",
+  [132] = "ISH Partition Does Not Exist",
+  [133] = "ISH Partition Read Only",
+  [134] = "ISH Reorg Needed",
+  [135] = "Undefined",
 }
 
 local address_types = {
@@ -137,18 +156,120 @@ local address_types = {
 
 -- 0x_00e RSTATUS
 local rstatus_conditions = {
-  [75] = "CS Physical Serial Number",
+  [0] = "Squelch",
+  [1] = "Synthesizer Lock Detect",
+  [2] = "RSSI",
+  [3] = "Battery Value",
+  [4] = "Low Battery",
+  [5] = "Powerup Status",
+  [6] = "Abacus Tuning Status",
+  [7] = "Model Number",
+  [8] = "Serial Number",
+  [9] = "Read ESN",
+  [10] = "IF Input Signal Strength",
+  [11] = "Read Product Serial Number",
+  [12] = "Frequency Offset",
+  [13] = "Current Signalling Mode",
+  [14] = "Radio ID",
+  [15] = "Radio Alias",
+  [16] = "Generic Option Board Available",
+  [17] = "Bandit Wireline Board Available",
+  [18] = "Alt Image Status of Bandit Controller FPGA",
+  [19] = "Alt Image Status of Bandit Wireline FPGA",
+  [20] = "Neptune Feature Status",
+  [21] = "Meter Status of Bandit FPGA",
+  [22] = "Select 5 Radio ID",
+  [23] = "Privacy Type",
+  [24] = "Bluetooth Address",
+  [25] = "Sideband Suppression",
+  [45] = "Radio Update Status",
+  [75] = "Physical Serial Number",
+  [78] = "Default Gateway Network Attachment",
 }
 
 -- 0x_00f VERINFO
-local targets = {
-  [0x00] = "Firmware",
-  [0x30] = "Bootloader",
-  [0x35] = "Unk1",
-  [0x41] = "Codeplug",
-  [0x50] = "Unk2",
-  [0x51] = "Unk3",
-  [0x52] = "Unk4",
+local verinfo_targets = {
+  [0x00] = "Host Software Version",
+  [0x02] = "Current BBF Bundle Version",
+  [0x03] = "Pending BBF Bundle Version",
+  [0x04] = "Codeplug Required Firmware Version",
+  [0x10] = "DSP Software Version",
+  [0x11] = "DSP Capability",
+  [0x13] = "DTP Capability",
+  [0x22] = "Mace Flash Version",
+  [0x24] = "Mace Hardware Version",
+  [0x25] = "Mace Hardware Type",
+  [0x30] = "Flash Boot App Version",
+  [0x32] = "RAM Downloader Version",
+  [0x35] = "L3 Bootloader Version",
+  [0x40] = "Tune Version",
+  [0x41] = "Security Version",
+  [0x42] = "Codeplug Version",
+  [0x4b] = "Codeplug Session ID",
+  [0x50] = "PSDT Version",
+  [0x51] = "Configuration Version",
+  [0x52] = "Kernel Version",
+  [0x6d] = "Flash Size",
+  [0x81] = "Option Board Firmware Version",
+  [0x82] = "Option Board Name",
+  [0x84] = "Option Board Hardware Type",
+  [0x85] = "Option Board Main App Version",
+  [0x87] = "Option Board Flash Image Type",
+  [0x88] = "Option Board Flash Image Version",
+  [0xa4] = "Consolette Brd Hardware Type",
+  [0xa5] = "Consolette Brd Host Version",
+  [0xb0] = "FPGA Controller Alt Version",
+  [0xb1] = "FPGA Controller Factory Version",
+  [0xb2] = "FPGA Controller Active Version",
+  [0xb3] = "FPGA Wireline Alt Version",
+  [0xb4] = "FPGA Wireline Factory Version",
+  [0xb5] = "FPGA Wireline Active Version",
+}
+
+-- 0x_010 RWMODELNUM
+local modelnum_ops = {
+  [0] = "Read",
+  [1] = "Write",
+}
+
+-- 0x_011 SERNUMOP
+local sernum_ops = {
+  [0] = "Read Radio SN",
+  [1] = "Write Radio SN",
+  [2] = "Read ESN",
+  [3] = "Write ESN",
+  [4] = "Read MAC Address",
+  [5] = "Write MAC Address",
+  [6] = "Read Product SN",
+  [7] = "Write Product SN",
+  [8] = "Read Option Board SN",
+  [9] = "Write Option Board SN",
+  [10] = "Read WiFi MAC Address",
+  [11] = "Write WiFi MAC Address",
+}
+
+-- 0x_02c LANGPKINFO
+local langpkinfo_targets = {
+  [0] = "Single Language Pack",
+  [1] = "All Language Pack",
+  [2] = "Default Language Pack",
+  [3] = "All TTS Language Pack",
+}
+
+-- 0x_037 CODEPLUGATTR
+local codeplugattr_ops = {
+  [0] = "None",
+  [1] = "Read",
+  [2] = "Write",
+}
+local codeplugattr_types = {
+  [0] = "None",
+  [1] = "Total Allowable Memory",
+  [2] = "Current Memory Used",
+  [3] = "Regional Information",
+  [4] = "OEM Manufacturer ID",
+  [7] = "Radio Security Information",
+  [9] = "Certificate Supported ID",
 }
 
 -- 0x_10_ ISH
@@ -195,6 +316,15 @@ local calltypes = {
   [10] = "Group Phone Call",
 }
 
+-- 0x_467 CODEPLUGPASSWORD
+local codeplugpassword_functions = {
+  [0] = "Request Status",
+  [1] = "Verify Password",
+  [2] = "Pair Device",
+  [3] = "Unpair Device",
+  [4] = "Verify Pair",
+}
+
 -- Multiple
 local f_opcode = ProtoField.uint16("xcmp.opcode", "Opcode", base.HEX, opcodes)
 local f_len = ProtoField.uint16("xcmp.len", "Length", base.DEC)
@@ -205,9 +335,23 @@ local f_address_mototrbo = ProtoField.bytes("xcmp.address.mototrbo", "MotoTRBO I
 local f_rstatus_result = ProtoField.uint8("xcmp.rstatus.result", "Result", base.DEC, results)
 local f_rstatus_condition = ProtoField.uint8("xcmp.rstatus.condition", "Condition", base.DEC, rstatus_conditions)
 local f_rstatus_status = ProtoField.bytes("xcmp.rstatus.status", "Status")
-local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, targets)
+local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, verinfo_targets)
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
+local f_modelnum_op = ProtoField.uint8("xcmp.modelnum.op", "Operation", base.DEC, modelnum_ops)
+local f_modelnum_data = ProtoField.stringz("xcmp.modelnum.data", "Data", base.ASCII)
+local f_sernum_op = ProtoField.uint8("xcmp.sernum.op", "Operation", base.DEC, sernum_ops)
+local f_sernum_data = ProtoField.stringz("xcmp.sernum.data", "Data", base.ASCII)
+local f_uuid_data = ProtoField.bytes("xcmp.uuid.data", "Data")
+local f_langpkinfo_target = ProtoField.uint8("xcmp.langpkinfo.target", "Target", base.DEC, langpkinfo_targets)
+local f_langpkinfo_avail = ProtoField.uint32("xcmp.langpkinfo.avail", "Available Space", base.DEC)
+local f_langpkinfo_count = ProtoField.uint8("xcmp.langpkinfo.count", "Language Pack Count", base.DEC)
+local f_langpkinfo_entry_len = ProtoField.uint8("xcmp.langpkinfo.entry_len", "Language Pack Entry Length", base.DEC)
+local f_langpkinfo_entry = ProtoField.bytes("xcmp.langpkinfo.entry", "Language Pack Data")
 local f_bundle_count = ProtoField.uint8("xcmp.bundle.count", "Message Count", base.DEC)
+local f_codeplugattr_op = ProtoField.uint8("xcmp.codeplugattr.ops", "Operation", base.DEC, codeplugattr_ops)
+local f_codeplugattr_type = ProtoField.uint8("xcmp.codeplugattr.type", "Type", base.DEC, codeplugattr_types)
+local f_codeplugattr_data_len = ProtoField.uint8("xcmp.codeplugattr.data.len", "Length", base.DEC)
+local f_codeplugattr_data = ProtoField.bytes("xcmp.codeplugattr.data", "Data")
 -- 0x_1__
 local f_ish_part = ProtoField.uint8("xcmp.ish.partition", "Partition", base.HEX, partitions)
 local f_ish_type = ProtoField.uint16("xcmp.ish.type", "Type", base.HEX)
@@ -217,9 +361,7 @@ local f_ish_offset = ProtoField.uint16("xcmp.ish.offset", "Offset", base.DEC)
 local f_ish_ret_len = ProtoField.uint16("xcmp.ish.ret_len", "Returned length", base.DEC)
 local f_ish_tot_len = ProtoField.uint16("xcmp.ish.tot_len", "Total length", base.DEC)
 local f_ish_value = ProtoField.bytes("xcmp.ish.value", "Value")
--- 104 is IDSET
 local f_readishidset_entry = ProtoField.uint16("xcmp.readishidset.entry", "Entry", base.HEX)
--- 105 is TYPESET
 local f_readishtypeset_entry = ProtoField.uint16("xcmp.readishtypeset.entry", "Entry", base.HEX)
 -- 0x_4__
 local f_devinitsts_major = ProtoField.uint8("xcmp.devinitsts.major", "Major Version", base.DEC)
@@ -252,6 +394,13 @@ local f_fileaccess_filesize = ProtoField.uint32("xcmp.fileaccess.filesize", "Fil
 local f_fileaccess_fileoffset = ProtoField.uint32("xcmp.fileaccess.fileoffset", "File Offset", base.DEC)
 local f_fileaccess_pathlen = ProtoField.uint16("xcmp.fileaccess.pathlen", "Path Length", base.DEC)
 local f_fileaccess_path = ProtoField.stringz("xcmp.fileaccess.path", "Path", base.ASCII)
+local f_codeplugpassword_function = ProtoField.uint8("xcmp.codeplugpassword.function", "Function", base.DEC, codeplugpassword_functions)
+local f_codeplugpassword_policy = ProtoField.uint8("xcmp.codeplugpassword.policy", "Policy", base.DEC)
+local f_codeplugpassword_algid = ProtoField.uint16("xcmp.codeplugpassword.algid", "Algorithm ID", base.DEC)
+local f_codeplugpassword_saltlen = ProtoField.uint8("xcmp.codeplugpassword.saltlen", "Salt Length", base.DEC)
+local f_codeplugpassword_salt = ProtoField.bytes("xcmp.codeplugpassword.salt", "Salt")
+local f_codeplugpassword_islocked = ProtoField.bool("xcmp.codeplugpassword.islocked", "Is Locked")
+local f_codeplugpassword_remaining = ProtoField.uint8("xcmp.codeplugpassword.remaining", "Remaining Attempts", base.DEC)
 
 
 proto.fields = {
@@ -267,7 +416,21 @@ proto.fields = {
   f_rstatus_status,
   f_verinfo_target,
   f_verinfo_version,
+  f_modelnum_op,
+  f_modelnum_data,
+  f_sernum_op,
+  f_sernum_data,
+  f_uuid_data,
+  f_langpkinfo_target,
+  f_langpkinfo_avail,
+  f_langpkinfo_count,
+  f_langpkinfo_entry,
+  f_langpkinfo_entry_len,
   f_bundle_count,
+  f_codeplugattr_op,
+  f_codeplugattr_type,
+  f_codeplugattr_data_len,
+  f_codeplugattr_data,
 -- 0x_1__
   f_ish_part,
   f_ish_type,
@@ -277,9 +440,7 @@ proto.fields = {
   f_ish_ret_len,
   f_ish_tot_len,
   f_ish_value,
-  --
   f_readishidset_entry,
-  --
   f_readishtypeset_entry,
 -- 0x_4__
   f_devinitsts_major,
@@ -312,6 +473,13 @@ proto.fields = {
   f_fileaccess_fileoffset,
   f_fileaccess_pathlen,
   f_fileaccess_path,
+  f_codeplugpassword_function,
+  f_codeplugpassword_policy,
+  f_codeplugpassword_algid,
+  f_codeplugpassword_saltlen,
+  f_codeplugpassword_salt,
+  f_codeplugpassword_islocked,
+  f_codeplugpassword_remaining,
 }
 
 -- dofile("xnl.luainc") -- uncomment to fix dependency order
@@ -367,6 +535,33 @@ local function dissect_xcmp_message(buf, pkt, tree)
     tree:add(f_verinfo_target, buf(2, 1))
   elseif opcode == 0x800f then -- VERINFO_RES
     tree:add(f_verinfo_version, buf(3, buf:len() - 3))
+  elseif opcode == 0x0010 then -- RWMODELNUM
+    tree:add(f_modelnum_op, buf(2, 1))
+  elseif opcode == 0x8010 then -- RWMODELNUM_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_modelnum_data, buf(3, buf:len() - 3))
+  elseif opcode == 0x0011 then -- SERNUMOP
+    tree:add(f_sernum_op, buf(2, 1))
+  elseif opcode == 0x8011 then -- SERNUMOP_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_sernum_data, buf(3, buf:len() - 3))
+  elseif opcode == 0x8012 then -- READUUID_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_uuid_data, buf(3, buf:len() - 3))
+  elseif opcode == 0x002c then -- LANGPKINFO
+    tree:add(f_langpkinfo_target, buf(2, 1))
+  elseif opcode == 0x802c then -- LANGPKINFO_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_langpkinfo_avail, buf(3, 4))
+    tree:add(f_langpkinfo_count, buf(7, 1))
+    local count = buf(7, 1):uint()
+    local offset = 8
+    for index = 1, count do
+      local entry_len = buf(offset, 1):uint()
+      tree:add(f_langpkinfo_entry_len, buf(offset, 1))
+      tree:add(f_langpkinfo_entry, buf(offset+1, entry_len-1))
+      offset = offset + entry_len
+    end
   elseif opcode == 0x002e then -- SUPERBUNDLE
     local bundle_count = buf(2, 1):uint()
     tree:add(f_bundle_count, buf(2, 1))
@@ -420,6 +615,19 @@ local function dissect_xcmp_message(buf, pkt, tree)
       bundle_tree:set_text(string.format("Bundle Message %d", index))
       child_tree:set_text(child_desc)
       offset = child_offset + child_len
+    end
+  elseif opcode == 0x0037 then -- CODEPLUGATTR
+    tree:add(f_codeplugattr_op, buf(2, 1))
+    tree:add(f_codeplugattr_type, buf(3, 1))
+    tree:add(f_codeplugattr_data_len, buf(4, 1))
+  elseif opcode == 0x8037 then -- CODEPLUGATTR_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_codeplugattr_op, buf(3, 1))
+    tree:add(f_codeplugattr_type, buf(4, 1))
+    tree:add(f_codeplugattr_data_len, buf(5, 1))
+    local data_len = buf(5, 1):uint()
+    if data_len > 0 then
+      tree:add(f_codeplugattr_data, buf(6, data_len))
     end
   elseif opcode == 0x0100 then -- READISHITEM
     tree:add(f_ish_part, buf(2, 1))
@@ -538,6 +746,25 @@ local function dissect_xcmp_message(buf, pkt, tree)
     tree:add(f_fileaccess_pathlen, buf(offset + 15, 2))
     local pathlen = buf(offset + 15, 2):uint()
     tree:add(f_fileaccess_path, buf(offset + 17, pathlen))
+  elseif opcode == 0x0467 then -- CODEPLUGPASSWORD
+    tree:add(f_codeplugpassword_function, buf(2, 1))
+  elseif opcode == 0x8467 then -- CODEPLUGPASSWORD_RES
+    tree:add(f_result, buf(2, 1))
+    tree:add(f_codeplugpassword_function, buf(3, 1))
+    local func = buf(3, 1):uint()
+    if func == 0 then -- Request Status
+      tree:add(f_codeplugpassword_policy, buf(4, 1))
+      tree:add(f_codeplugpassword_algid, buf(5, 2))
+      tree:add(f_codeplugpassword_saltlen, buf(7, 1))
+      local saltlen = buf(7, 1):uint()
+      local offset = 8
+      if saltlen > 0 then
+        tree:add(f_codeplugpassword_salt, buf(offset, saltlen))
+        offset = offset + saltlen
+      end
+      tree:add(f_codeplugpassword_islocked, buf(offset, 1))
+      tree:add(f_codeplugpassword_remaining, buf(offset + 1, 1))
+    end
   end
 
   return desc
