@@ -771,6 +771,7 @@ local function dissect_xcmp_message(buf, pkt, tree)
 end
 
 function proto.dissector(buf, pkt, root)
+  -- DATA_MSG_ACK
   if xnl_opcode().value == 12 and buf:len() == 0 then
     return
   end

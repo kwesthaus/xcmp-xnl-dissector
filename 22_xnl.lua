@@ -143,9 +143,11 @@ function proto.dissector(buf, pkt, root)
   pkt.cols.info:set(desc)
 
   if proto_num == 0 and len > 14 then
+    -- parse ourselves
     local payload_tree = tree:add(f_payload, buf(14, len - 14))
     dissect_xnl_payload(buf(14, len - 14), payload_tree, opcode)
   else
+    -- use the DissectorTable to invoke a SubDissector
     protos:try(proto_num, buf(14, len - 14):tvb(), pkt, root)
   end
 end
