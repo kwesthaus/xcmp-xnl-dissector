@@ -107,28 +107,12 @@ for base, name in pairs(opcodes_base) do
   opcodes[base + 0xb000] = name .. "_BRDCST"
 end
 
-local address_types = {
-  [0] = "Local",
-  [1] = "MotoTRBO",
-  [2] = "IPv4",
-  [5] = "MDC",
-  [7] = "Phonenumber",
-  [11] = "QuickCall",
-  [13] = "5-Tone",
-  [14] = "De-/Access Code",
-}
 
-local calltypes = {
-  [0] = "No Call",
-  [1] = "Selective Call",
-  [2] = "Call Alert",
-  [4] = "Enhanced Private Call",
-  [5] = "Private Phone Call",
-  [6] = "Group Call",
-  [8] = "Call Alert with Voice",
-  [9] = "Telegram Call",
-  [10] = "Group Phone Call",
-}
+--[[
+  ENUMS
+]]
+
+-- MULTIPLE
 
 local results = {
   [0] = "Success",
@@ -140,6 +124,23 @@ local results = {
   [7] = "Unavailable Function",
 }
 
+local address_types = {
+  [0] = "Local",
+  [1] = "MotoTRBO",
+  [2] = "IPv4",
+  [5] = "MDC",
+  [7] = "Phonenumber",
+  [11] = "QuickCall",
+  [13] = "5-Tone",
+  [14] = "De-/Access Code",
+}
+
+-- 0x_00e RSTATUS
+local rstatus_conditions = {
+  [75] = "CS Physical Serial Number",
+}
+
+-- 0x_00f VERINFO
 local targets = {
   [0x00] = "Firmware",
   [0x30] = "Bootloader",
@@ -150,17 +151,22 @@ local targets = {
   [0x52] = "Unk4",
 }
 
+-- 0x_10_ ISH
+local partitions = {
+  [0x80] = "APP?",
+  [0x81] = "SECURITY?",
+}
+
+-- 0x_400 DEVINITSTS
 local devinitsts_inits = {
   [0] = "STATUS",
   [1] = "COMPLETE",
   [2] = "UPDATE",
 }
-
 local devtypes = {
   [1] = "RF Transceiver",
   [10] = "IP Peripheral",
 }
-
 local devinitsts_attrs = {
   [0] = "Device Family",
   [2] = "Display",
@@ -176,27 +182,33 @@ local devinitsts_attrs = {
   [20] = "GPS",
 }
 
-local partitions = {
-  [0x80] = "APP?",
-  [0x81] = "SECURITY?",
+-- 0x_41E CALLCTRL
+local calltypes = {
+  [0] = "No Call",
+  [1] = "Selective Call",
+  [2] = "Call Alert",
+  [4] = "Enhanced Private Call",
+  [5] = "Private Phone Call",
+  [6] = "Group Call",
+  [8] = "Call Alert with Voice",
+  [9] = "Telegram Call",
+  [10] = "Group Phone Call",
 }
 
-local rstatus_conditions = {
-  [75] = "CS Physical Serial Number",
-}
-
+-- Multiple
 local f_opcode = ProtoField.uint16("xcmp.opcode", "Opcode", base.HEX, opcodes)
 local f_len = ProtoField.uint16("xcmp.len", "Length", base.DEC)
 local f_result = ProtoField.uint8("xcmp.result", "Result", base.DEC, results)
 local f_address_type = ProtoField.uint8("xcmp.address.type", "Type", base.DEC, address_types)
 local f_address_mototrbo = ProtoField.bytes("xcmp.address.mototrbo", "MotoTRBO ID")
+-- 0x_0__
 local f_rstatus_result = ProtoField.uint8("xcmp.rstatus.result", "Result", base.DEC, results)
 local f_rstatus_condition = ProtoField.uint8("xcmp.rstatus.condition", "Condition", base.DEC, rstatus_conditions)
 local f_rstatus_status = ProtoField.bytes("xcmp.rstatus.status", "Status")
 local f_verinfo_target = ProtoField.uint8("xcmp.verinfo.target", "Target", base.DEC, targets)
 local f_verinfo_version = ProtoField.stringz("xcmp.verinfo.version", "Version", base.ASCII)
 local f_bundle_count = ProtoField.uint8("xcmp.bundle.count", "Message Count", base.DEC)
---
+-- 0x_1__
 local f_ish_part = ProtoField.uint8("xcmp.ish.partition", "Partition", base.HEX, partitions)
 local f_ish_type = ProtoField.uint16("xcmp.ish.type", "Type", base.HEX)
 local f_ish_id = ProtoField.uint16("xcmp.ish.id", "ID", base.HEX)
@@ -209,7 +221,7 @@ local f_ish_value = ProtoField.bytes("xcmp.ish.value", "Value")
 local f_readishidset_entry = ProtoField.uint16("xcmp.readishidset.entry", "Entry", base.HEX)
 -- 105 is TYPESET
 local f_readishtypeset_entry = ProtoField.uint16("xcmp.readishtypeset.entry", "Entry", base.HEX)
---
+-- 0x_4__
 local f_devinitsts_major = ProtoField.uint8("xcmp.devinitsts.major", "Major Version", base.DEC)
 local f_devinitsts_minor = ProtoField.uint8("xcmp.devinitsts.minor", "Minor Version", base.DEC)
 local f_devinitsts_patch = ProtoField.uint8("xcmp.devinitsts.patch", "Patch Version", base.DEC)
@@ -221,14 +233,14 @@ local f_devinitsts_attrlen = ProtoField.uint8("xcmp.devinitsts.attrlen", "Attrib
 local f_devinitsts_attr = ProtoField.bytes("xcmp.devinitsts.attr", "Attribute")
 local f_devinitsts_attr_key = ProtoField.uint8("xcmp.devinitsts.attr.key", "Key", base.HEX, devinitsts_attrs)
 local f_devinitsts_attr_value = ProtoField.uint8("xcmp.devinitsts.attr.value", "Value", base.HEX)
-local f_rrctrl_feature = ProtoField.uint8("xcmp.rrctrl.feature", "Feature", base.DEC)
-local f_rrctrl_operation = ProtoField.uint8("xcmp.rrctrl.operation", "Operation", base.DEC)
-local f_rrctrl_status = ProtoField.uint8("xcmp.rrctrl.status", "Status", base.DEC)
-local f_rrctrl_address = ProtoField.bytes("xcmp.rrctrl.address", "Address")
 local f_chznsel_function = ProtoField.uint8("xcmp.chznsel.function", "Function", base.DEC)
 local f_chznsel_zone = ProtoField.uint16("xcmp.chznsel.zone", "Zone", base.DEC)
 local f_chznsel_position = ProtoField.uint16("xcmp.chznsel.position", "Position", base.DEC)
 local f_scan_function = ProtoField.uint8("xcmp.scan.function", "Function", base.DEC)
+local f_rrctrl_feature = ProtoField.uint8("xcmp.rrctrl.feature", "Feature", base.DEC)
+local f_rrctrl_operation = ProtoField.uint8("xcmp.rrctrl.operation", "Operation", base.DEC)
+local f_rrctrl_status = ProtoField.uint8("xcmp.rrctrl.status", "Status", base.DEC)
+local f_rrctrl_address = ProtoField.bytes("xcmp.rrctrl.address", "Address")
 local f_callctrl_function = ProtoField.uint8("xcmp.callctrl.function", "Function", base.DEC)
 local f_callctrl_calltype = ProtoField.uint8("xcmp.callctrl.calltype", "Call Type", base.DEC, calltypes)
 local f_callctrl_address = ProtoField.bytes("xcmp.callctrl.address", "Address")
@@ -243,18 +255,20 @@ local f_fileaccess_path = ProtoField.stringz("xcmp.fileaccess.path", "Path", bas
 
 
 proto.fields = {
+-- Multiple
   f_opcode,
   f_len,
   f_result,
   f_address_type,
   f_address_mototrbo,
+-- 0x_0__
   f_rstatus_result,
   f_rstatus_condition,
   f_rstatus_status,
   f_verinfo_target,
   f_verinfo_version,
   f_bundle_count,
-  --
+-- 0x_1__
   f_ish_part,
   f_ish_type,
   f_ish_id,
@@ -267,7 +281,7 @@ proto.fields = {
   f_readishidset_entry,
   --
   f_readishtypeset_entry,
-  --
+-- 0x_4__
   f_devinitsts_major,
   f_devinitsts_minor,
   f_devinitsts_patch,
@@ -279,14 +293,14 @@ proto.fields = {
   f_devinitsts_attr,
   f_devinitsts_attr_key,
   f_devinitsts_attr_value,
-  f_rrctrl_feature,
-  f_rrctrl_operation,
-  f_rrctrl_status,
-  f_rrctrl_address,
   f_chznsel_function,
   f_chznsel_zone,
   f_chznsel_position,
   f_scan_function,
+  f_rrctrl_feature,
+  f_rrctrl_operation,
+  f_rrctrl_status,
+  f_rrctrl_address,
   f_callctrl_function,
   f_callctrl_calltype,
   f_callctrl_address,
@@ -493,16 +507,16 @@ local function dissect_xcmp_message(buf, pkt, tree)
         end
       end
     end
-  elseif opcode == 0x041c or opcode == 0xb41c then -- RRCTRL
-    tree:add(f_rrctrl_feature, buf(2, 1))
-    tree:add(opcode == 0x041c and f_rrctrl_operation or f_rrctrl_status, buf(3, 1))
-    buf = dissect_address(tree, f_rrctrl_address, buf(4))
   elseif opcode == 0x040d then -- CHZNSEL
     tree:add(f_chznsel_function, buf(2, 1))
     tree:add(f_chznsel_zone, buf(3, 2))
     tree:add(f_chznsel_position, buf(5, 2))
   elseif opcode == 0x040f then -- SCAN
     tree:add(f_scan_function, buf(2, 1))
+  elseif opcode == 0x041c or opcode == 0xb41c then -- RRCTRL
+    tree:add(f_rrctrl_feature, buf(2, 1))
+    tree:add(opcode == 0x041c and f_rrctrl_operation or f_rrctrl_status, buf(3, 1))
+    buf = dissect_address(tree, f_rrctrl_address, buf(4))
   elseif opcode == 0x041e then -- CALLCTRL
     tree:add(f_callctrl_function, buf(2, 1))
     tree:add(f_callctrl_calltype, buf(3, 1))
