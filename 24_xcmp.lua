@@ -274,8 +274,14 @@ local codeplugattr_types = {
 
 -- 0x_10_ ISH
 local partitions = {
-  [0x80] = "APP?",
-  [0x81] = "SECURITY?",
+  [0x80] = "Application",
+  [0x81] = "Security",
+  [0x82] = "Tuning",
+  [0x87] = "Cfs",
+}
+local ish_types = {
+  [0x0ffb] = "Channel",
+  [0x0ffc] = "Zone",
 }
 
 -- 0x_400 DEVINITSTS
@@ -354,7 +360,7 @@ local f_codeplugattr_data_len = ProtoField.uint8("xcmp.codeplugattr.data.len", "
 local f_codeplugattr_data = ProtoField.bytes("xcmp.codeplugattr.data", "Data")
 -- 0x_1__
 local f_ish_part = ProtoField.uint8("xcmp.ish.partition", "Partition", base.HEX, partitions)
-local f_ish_type = ProtoField.uint16("xcmp.ish.type", "Type", base.HEX)
+local f_ish_type = ProtoField.uint16("xcmp.ish.type", "Type", base.HEX, ish_types)
 local f_ish_id = ProtoField.uint16("xcmp.ish.id", "ID", base.HEX)
 local f_ish_req_len = ProtoField.uint16("xcmp.ish.req_len", "Length", base.DEC)
 local f_ish_offset = ProtoField.uint16("xcmp.ish.offset", "Offset", base.DEC)
@@ -363,6 +369,10 @@ local f_ish_tot_len = ProtoField.uint16("xcmp.ish.tot_len", "Total length", base
 local f_ish_value = ProtoField.bytes("xcmp.ish.value", "Value")
 local f_readishidset_entry = ProtoField.uint16("xcmp.readishidset.entry", "Entry", base.HEX)
 local f_readishtypeset_entry = ProtoField.uint16("xcmp.readishtypeset.entry", "Entry", base.HEX)
+local f_ish_channel_name = ProtoField.string("xcmp.ish.channel.name", "Channel Name", base.UNICODE) -- wireshark does not support UTF-16LE stringz, so we use string and determine length+decode it manually
+local f_ish_channel_tx_freq = ProtoField.uint32("xcmp.ish.channel.tx_freq", "Channel TX Frequency", base.DEC)
+local f_ish_channel_rx_freq = ProtoField.uint32("xcmp.ish.channel.rx_freq", "Channel RX Frequency", base.DEC)
+local f_ish_zone_name = ProtoField.string("xcmp.ish.zone.name", "Zone Name", base.UNICODE) -- wireshark does not support UTF-16LE stringz, so we use string and determine length+decode it manually
 -- 0x_4__
 local f_devinitsts_major = ProtoField.uint8("xcmp.devinitsts.major", "Major Version", base.DEC)
 local f_devinitsts_minor = ProtoField.uint8("xcmp.devinitsts.minor", "Minor Version", base.DEC)
@@ -442,6 +452,10 @@ proto.fields = {
   f_ish_value,
   f_readishidset_entry,
   f_readishtypeset_entry,
+  f_ish_channel_name,
+  f_ish_channel_tx_freq,
+  f_ish_channel_rx_freq,
+  f_ish_zone_name,
 -- 0x_4__
   f_devinitsts_major,
   f_devinitsts_minor,
@@ -513,6 +527,23 @@ local function describe_opcode(opcode)
   end
 
   return "UNK_REQ:" .. string.format("0x%x", opcode)
+end
+
+local function read_utf16_stringz(buf, offset)
+  local str = ""
+  local found_terminator = false
+  local i = offset
+  while i + 1 < buf:len() do
+    local char_code = buf(i, 2):le_uint()
+    if char_code == 0 then
+      found_terminator = true
+      break
+    end
+    str = str .. string.char(char_code)
+    i = i + 2
+  end
+  assert(found_terminator, "UTF-16 string not null-terminated")
+  return str, i - offset + 2 -- +2 to include the null terminator
 end
 
 local function dissect_xcmp_message(buf, pkt, tree)
@@ -640,6 +671,7 @@ local function dissect_xcmp_message(buf, pkt, tree)
     tree:add(f_result, buf(2, 1))
     tree:add(f_ish_part, buf(3, 1))
     tree:add(f_ish_type, buf(4, 2))
+    local ish_type = buf(4, 2):uint()
     tree:add(f_ish_id, buf(6, 2))
     tree:add(f_ish_ret_len, buf(8, 2))
     local ret_len = buf(8, 2):uint()
@@ -647,6 +679,18 @@ local function dissect_xcmp_message(buf, pkt, tree)
     tree:add(f_ish_tot_len, buf(12, 2))
     if ret_len > 0 then
       tree:add(f_ish_value, buf(14, ret_len))
+    end
+    if ish_type == 0x0ffb and ret_len > 0 then
+      local chan_tx_freq = buf(14+36, 4):le_uint() * 5 -- multiply by 5 to get frequency in Hz
+      local chan_rx_freq = buf(14+40, 4):le_uint() * 5
+      tree:add(f_ish_channel_tx_freq, buf(14+36, 4), chan_tx_freq)
+      tree:add(f_ish_channel_rx_freq, buf(14+40, 4), chan_rx_freq)
+      local chan_name, chan_len = read_utf16_stringz(buf, 14+60) -- wireshark does not support UTF-16LE stringz, so we determine length+decode it manually, and pass the pre-decoded value into tree:add
+      tree:add(f_ish_channel_name, buf(74, chan_len), chan_name)
+    end
+    if ish_type == 0x0ffc and ret_len > 0 then
+      local zone_name, zone_len = read_utf16_stringz(buf, 14+12) -- wireshark does not support UTF-16LE stringz, so we determine length+decode it manually, and pass the pre-decoded value into tree:add
+      tree:add(f_ish_zone_name, buf(14+12, zone_len), zone_name)
     end
     desc = desc .. " Part/Type/Id=" .. "0x" .. buf(3, 5):bytes():tohex()
   elseif opcode == 0x0104 then -- READISHIDSET
